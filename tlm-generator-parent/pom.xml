@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.everis.microgenerator</groupId>
     <artifactId>tlm-generator-parent</artifactId>
-    <version>1.0.0-52-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>tlm-generator-parent</name>
     <packaging>pom</packaging>
 
@@ -144,21 +144,4 @@
         </repository>
     </distributionManagement>
 
-    <repositories>
-        <repository>
-            <id>central</id>
-            <name>Central Repository</name>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <layout>default</layout>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-
-        <!--repository>
-            <id>crew_integracion</id>
-            <name>artifactory-new-gd3my9j0-68c69656c7-gfvk8-releases</name>
-            <url>http://40.70.79.82:8080/artifactory/libs-release</url>
-        </repository-->
-    </repositories>
 </project>

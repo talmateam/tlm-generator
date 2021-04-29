@@ -17,9 +17,9 @@
                 </repository>
                 <repository>
                     <id>github</id>
-                    <url>https://maven.pkg.github.com/talmateam/*</url>
+                    <url>https://maven.pkg.github.com/talmateam/tlm-generator</url>
                     <snapshots>
-                        <enabled>true</enabled>
+                        <enabled>false</enabled>
                     </snapshots>
                 </repository>
             </repositories>
