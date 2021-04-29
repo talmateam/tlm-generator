@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    include: configtemplates
+  cloud:
+    config:
+      name: generator
+      uri: ${CONFIG_URI}
+      label: ${CONFIG_LABEL}
+

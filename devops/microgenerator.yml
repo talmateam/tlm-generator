@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: microgenerator
+  labels:
+    app: microgenerator
+spec:
+  ports:
+    - name: http-external
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: http-internal
+      protocol: TCP
+      port: 8888
+      targetPort: 8888
+  selector:
+    app: microgenerator
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: microgenerator
+type: Opaque
+data:
+  CONFIG_LABEL: {{CONFIG_LABEL}}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: microgenerator
+  labels:
+    app: microgenerator
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: microgenerator
+    spec:
+      containers:
+      - image: image:latest
+        name: microgenerator
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+          - name: CONFIG_URI
+            value: http://commons-service-configserver-svc:8888
+          - name: CONFIG_LABEL
+            valueFrom:
+              secretKeyRef:
+                name: microgenerator
+                key: CONFIG_LABEL
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: microgenerator-hpa
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: microgenerator
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: microgenerator
+  labels:
+    app: microgenerator
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: microgenerator
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/app-root: /tlm-generator
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  labels:
+    app: microgenerator
+  name: microgenerator
+spec:
+  rules:
+  - host: BOB_HOSTNAME
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: microgenerator
+          servicePort: 8080
+  tls:
+  - hosts:
+    - BOB_HOSTNAME
+    secretName: BOB_HOSTNAME

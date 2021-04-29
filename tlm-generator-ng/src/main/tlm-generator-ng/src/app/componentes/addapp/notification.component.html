@@ -1,0 +1,10 @@
+<span class="example-pizza-party" style="display: flex; flex-flow: row nowrap; justify-content: flex-start; align-items: center;">
+        <ng-container *ngIf="data.status == 'success' else temperror">
+            <mat-icon class="notifi-icon">done_all</mat-icon>
+            <label for="notifi-icon" style="margin-left: 10px;">{{data.message}}</label>
+        </ng-container>
+        <ng-template #temperror>
+            <mat-icon class="notifi-icon">error</mat-icon>
+            <label for="notifi-icon" style="margin-left: 10px;">{{data.message}}</label>
+        </ng-template>
+</span>

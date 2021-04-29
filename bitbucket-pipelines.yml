@@ -1,0 +1,159 @@
+definitions:
+  caches:
+    mvnnpm: tlm-generator-ng/src/main/tlm-generator-ng/node_modules
+  steps:
+    - step: &InstallRelease
+        name: Install artifact
+        image: maven:3.6.3-jdk-11-slim
+        description: No se debe hacer unittest, debido a que release:perform siempre lo hace desde la ultima tag.
+        caches:
+          - maven
+          - mvnnpm
+        script:
+          - >
+            apt update; apt install -y git;
+            curl -sL https://deb.nodesource.com/setup_10.x | bash - ;
+            apt-get install -y nodejs
+          - >
+            mvn release:prepare -s devops/settings.xml -B -Dstyle.color=always -Dusername=$GIT_USER -Dpassword=$GIT_PASS -DtagNameFormat=v@\{project.version\} -DscmCommentPrefix="[skip ci]" -Darguments="-DskipTests -Dpmd.skip=true -Dcpd.skip=true -Dspotbugs.skip=true";
+            echo "artifactId=`mvn help:evaluate  -Dexpression=project.artifactId -q -DforceStdout`" >> release.properties;
+            cp release.properties release.properties.backup;
+          - mvn release:perform -s devops/settings.xml -B -Dstyle.color=always -Dusername=$GIT_USER -Dpassword=$GIT_PASS -Dgoals=install
+        artifacts:
+          - release.properties.backup
+          - "**/target/**"
+
+    - step: &BuildDocker
+        name: Build docker image
+        image: maven:3.6.3-jdk-11-slim
+        description: Construccion de la imagen docker
+        script:
+          - \[ -f release.properties.backup \] && echo "Build docker" || exit -1
+          - cp `ls -d *-app`/target/*-app*.jar devops/; cp `ls -d *-app`/target/dependency/sbt-launch.jar  devops/;
+          - echo ">>> docker build -f devops/Dockerfile -t image_docker devops"
+          - docker build -f devops/Dockerfile -t image_docker devops
+          - docker save --output image.docker image_docker
+        artifacts:
+          - release.properties.backup
+          - image.docker
+        services:
+          - docker
+
+    - step: &DeployK8s
+        name: Deploy to master
+        image: maven:3.6.3-jdk-11-slim
+        description: Despliga a los ambientes de master
+        caches:
+          - docker
+        script:
+          - echo "Se envia a $BITBUCKET_DEPLOYMENT_ENVIRONMENT"
+          - docker load --input image.docker
+          - export VERSION=$BITBUCKET_BUILD_NUMBER
+          - export DOCKER_IMAGE=`grep artifactId= release.properties.backup | awk -F"=" '{print $2}'`
+          - export REPOIMAGE="$AZURE_DOCKER_REPO_HOST/$DOCKER_IMAGE:$VERSION"; echo "REPOIMAGE:$REPOIMAGE"
+          - echo "$AZURE_DOCKER_PASS" | docker login -u $AZURE_DOCKER_USER --password-stdin $AZURE_DOCKER_REPO_HOST
+          - docker tag image_docker $REPOIMAGE
+          - docker push $REPOIMAGE
+          - sed -i "s|image:latest|$REPOIMAGE|g" devops/microgenerator.yml
+          - sed -i "s|{{CONFIG_LABEL}}|$CONFIG_LABEL|g" devops/microgenerator.yml
+          - mkdir -p .kube/; echo $KUBECONFIG | base64 -d > .kube/kubeconfig-resource_group-aks_name
+          - pipe: microsoft/azure-aks-deploy:1.0.1
+            variables:
+              AZURE_RESOURCE_GROUP: resource_group
+              AZURE_AKS_NAME: aks_name
+              KUBECTL_COMMAND: apply
+              KUBERNETES_SPEC_FILE: devops/microgenerator.yml
+        artifacts:
+          - release.properties.backup
+          - image.docker
+        services:
+          - docker
+
+    - step: &NotifyDeployToPRD
+        name: Notificy values for deploy in production
+        description: Notificar los valores necesarios para deployar en produccion
+        caches:
+          - docker
+        script:
+          - export VERSION=$BITBUCKET_BUILD_NUMBER
+          - export DOCKER_IMAGE=`grep artifactId= release.properties.backup | awk -F"=" '{print $2}'`
+          - export REPO_IMAGE_SOURCE="$AZURE_DOCKER_REPO_HOST/$DOCKER_IMAGE:$VERSION"; echo "REPO_IMAGE_SOURCE:$REPO_IMAGE_SOURCE"
+          - export IMAGE_SOURCE="$DOCKER_IMAGE:$VERSION"; echo "REPOIMAGE:$REPOIMAGE"
+          - pipe: TamaraWeber/telegram-pipe:1.0.0
+            variables:
+              BOT_TOKEN: 1008783308:AAGksIm2f0VFxCDwskUSGfX5gdjivwJNi4k
+              CHAT_ID: -442174788
+              MESSAGE: 'Datos para despligue en produccion,
+                        <b><a href="$BITBUCKET_GIT_HTTP_ORIGIN/addon/pipelines/home%23!/results/$BITBUCKET_BUILD_NUMBER">pipeline $BITBUCKET_BUILD_NUMBER</a></b>, %3A, %3A, %3A, %3A
+                        IMAGE_SOURCE: $IMAGE_SOURCE
+                        REPO_IMAGE_SOURCE: $REPO_IMAGE_SOURCE'
+        artifacts:
+          - release.properties.backup
+          - image.docker
+
+    - step: &TagPRD
+        name: Tag artifact in production
+        description: Margar como en produccion en git
+        script:
+          - echo TAG
+
+
+
+
+pipelines:
+  custom:
+    deploy-in-production:
+      - variables:
+        - name: UAT_IMAGE_SOURCE
+        - name: UAT_REPO_IMAGE_SOURCE
+        - name: AZURE_DOCKER_PASS
+        - name: AZURE_DOCKER_USER
+        - name: AZURE_DOCKER_REPO_HOST
+        - name: AZURE_KUBECONFIG
+        - name: CONFIG_LABEL
+      - step:
+          caches:
+            - docker
+          script:
+            - echo "Se envia a $BITBUCKET_DEPLOYMENT_ENVIRONMENT"
+            - docker pull $UAT_REPO_IMAGE_SOURCE
+            - echo "$AZURE_DOCKER_PASS" | docker login -u $AZURE_DOCKER_USER --password-stdin $AZURE_DOCKER_REPO_HOST
+            - docker tag $UAT_REPO_IMAGE_SOURCE $AZURE_DOCKER_REPO_HOST/$UAT_IMAGE_SOURCE
+            - docker push $AZURE_DOCKER_REPO_HOST/$UAT_IMAGE_SOURCE
+            - sed -i "s|image:latest|$AZURE_DOCKER_REPO_HOST/$UAT_IMAGE_SOURCE|g" devops/microgenerator.yml
+            - sed -i "s|{{CONFIG_LABEL}}|$CONFIG_LABEL|g" devops/microgenerator.yml
+            - mkdir -p .kube/; echo $AZURE_KUBECONFIG | base64 -d > .kube/kubeconfig-resource_group-aks_name
+            - pipe: microsoft/azure-aks-deploy:1.0.1
+              variables:
+                AZURE_RESOURCE_GROUP: resource_group
+                AZURE_AKS_NAME: aks_name
+                KUBECTL_COMMAND: apply
+                KUBERNETES_SPEC_FILE: devops/microgenerator.yml
+          services:
+            - docker
+  branches:
+    master:
+      - step: *InstallRelease
+      - step: *BuildDocker
+      - step:
+          <<: *DeployK8s
+          name: Deploy to sandbox
+          deployment: sandbox
+      - step:
+          <<: *DeployK8s
+          name: Deploy to dev
+          deployment: dev
+          trigger: manual
+      - step:
+          <<: *DeployK8s
+          name: Deploy to uat
+          deployment: uat
+          trigger: manual
+      - step:
+          <<: *NotifyDeployToPRD
+          deployment: prd
+          trigger: manual
+      - step:
+          <<: *TagPRD
+          trigger: manual
+

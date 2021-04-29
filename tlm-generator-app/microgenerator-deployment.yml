@@ -1,0 +1,36 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: microgenerator
+  namespace: eu2-ayni-dev-01
+  labels:
+    app: microgenerator
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: microgenerator
+    spec:
+      containers:
+      - image: acreu2c001assidev01.azurecr.io/tlm-generator-app:1.0.0-0-ayni-SNAPSHOT
+        name: microgenerator
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+---      
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: microgenerator-hpa
+  namespace: eu2-ayni-dev-01
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: microgenerator
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 20

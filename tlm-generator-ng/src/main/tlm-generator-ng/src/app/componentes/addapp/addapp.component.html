@@ -1,0 +1,100 @@
+<div class="parent-container">
+    <mat-card *ngFor="let group of template.groups" class="element-card">
+        <mat-card-header>
+          <div mat-card-avatar class="example-header-image">
+              <i class="material-icons">{{group.icon}}</i>
+          </div>
+          <mat-card-title style="color: #68c020;">{{group.displayName}}</mat-card-title>
+          <mat-card-subtitle>{{group.description}}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="container-full">
+            <ng-container *ngFor="let prop of group.properties; let i = index">
+                    <p *ngIf="prop.inputType == 'text'">
+                      <mat-form-field appearance="outline">
+                        <mat-label>{{prop.displayName}}</mat-label>
+                        <input matInput placeholder="Nombre de aplicacion" [(ngModel)]="prop.defaultValue" required pattern="[a-zA-Z0-9 \-_.]*">
+                      </mat-form-field>
+                    </p>
+
+                    <mat-card *ngIf="prop.inputType == 'checkbox'" class="card-moduls" style="margin-bottom: 10px;" color="primary">
+                      <mat-checkbox color="primary"
+                        [(ngModel)]="prop.defaultValue"
+                        [(indeterminate)]="indeterminate"
+                        (click)="prop.childs[0].defaultValue = changeEvent(prop.childs[0].defaultValue,prop.displayName,prop.defaultValue)"
+                        >
+                        <input *ngIf="prop.childs.length > 0 && prop.defaultValue == true else childs" matInput placeholder="Nombre de Modulo" [(ngModel)]="prop.childs[0].defaultValue" style="margin-left: 8px;background-color: aliceblue;border-radius: 2px;padding: 1px;">
+
+                        <ng-template #childs>
+                          {{prop.displayName}}
+                        </ng-template>
+
+                      </mat-checkbox>
+                    </mat-card>
+            </ng-container>
+           <ng-container *ngIf="template.gitUrlReadme != '' ">
+              <!-- loaded from remote url -->
+                 <markdown [src]="template.gitUrlReadme" (load)="onLoad($event)" (error)="onError($event)" style="background:none; border:none; box-shadow:none;">
+                 </markdown>
+           </ng-container>
+          </div>
+        </mat-card-content>
+    </mat-card>
+
+
+
+<!----
+   <mat-card class="element-card">
+        <mat-card-header>
+          <div mat-card-avatar class="example-header-image">
+              <i class="material-icons">extension</i>
+          </div>
+          <mat-card-title style="color: #68c020;">Dependencias</mat-card-title>
+          <mat-card-subtitle>puede añadir entre las disponibles</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+        <div class="container-left">
+                <div _ngcontent-alw-c8="" class="row">
+                  <div _ngcontent-alw-c8="" class="offset-md-2 col-md-8 entry">
+                    <mat-card _ngcontent-alw-c9="" class="big-input mat-card" ng-reflect-klass="big-input" ng-reflect-ng-class="[object Object]">
+                        <form class="example-form" style="width: 100%">
+                          <input _ngcontent-alw-c9="" type="text" placeholder="I am going to..." [matAutocomplete]="auto" [formControl]="stateCtrl" width="100%;">
+                          <mat-autocomplete #auto="matAutocomplete">
+                            <mat-option *ngFor="let state of filteredStates | async" [value]="state.name">
+                                <img class="example-option-img" aria-hidden [src]="state.icon" height="25">
+                                <span>{{state.name}}</span>
+                                <span *ngIf="state.flagAdd" style="  color: rgba(35, 224, 161, 0.966);border-radius: 50px;height: 20px;width: 20px;padding: .2em;margin: 2px;">✔</span>
+                            </mat-option>
+                          </mat-autocomplete>
+                        </form>
+                        <button  _ngcontent-alw-c10="" (click)="_addData($event)" color="color" mat-raised-button="" class="mat-raised-button mat-color" ng-reflect-disabled="true" ng-reflect-color="color" disabled="false">
+                        >
+                        </button>
+                      </mat-card>
+                  </div>
+                </div>
+          </div>
+          <div class="container-right">
+              <mat-card *ngFor="let dep of depCheckAdd" style="margin-bottom: 10px;" color="primary">
+                  {{dep.name}}
+              </mat-card>
+          </div>
+        </mat-card-content>
+    </mat-card>
+    ---->
+    <ng-container *ngIf="template">
+        <div class="send-button-conten">
+          <a routerLink="." class="send-button" (click) = "sendData();" mat-raised-button color="accent">
+              <ng-container *ngIf="spinerstate else spineractive">
+                  <mat-icon><mat-spinner color="accent" diameter="20"></mat-spinner></mat-icon>
+                  <label for="Send" style="margin-left:5px;">Generando</label>
+              </ng-container>
+              <ng-template #spineractive>
+                  <mat-icon>cloud_download</mat-icon>
+                  <label for="Send" style="margin-left:5px;">Generar</label>
+              </ng-template>
+          </a>
+        </div>
+    </ng-container>
+
+  </div>

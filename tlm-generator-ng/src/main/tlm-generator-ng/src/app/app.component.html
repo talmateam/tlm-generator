@@ -1,0 +1,51 @@
+<!--The content below is only a placeholder and can be replaced.-->
+<div class="master-app">
+  <div class="general-app">
+    <header style="display: flex;flex-flow: column nowrap;align-items: center;padding: 15px;">
+      <div class="logo"></div>
+      <div class="name" style="color: #ffff">
+        <h2 style="font-weight: 200;">GENERADOR DE PROYECTOS</h2>
+      </div>
+    </header>
+    <div class="select-project" style="padding: 15px;">
+        <mat-form-field appearance="outline" style="width: 90%">
+            <mat-label style="color: #c1ff8e;">Tipo de proyecto a generar</mat-label>
+            <mat-select (selectionChange)="selectTemplate($event.value)" class="matSelect-templates">
+                <mat-option *ngFor="let apli of appsTemplates.templates" [value]="apli.name" class="mat-select-project" style="color: #8fff33;">
+                  {{apli.displayName}}
+                </mat-option>
+              </mat-select>
+          </mat-form-field>
+    </div>
+    <ng-container *ngIf="templateSel">
+        <mat-divider></mat-divider>
+      <mat-card *ngIf="templateSel.name" class="detail-template" style="margin: 15px;background-color: transparent;">
+          <h3 mat-subheader>DESCRIPCION DE TEMPLATE</h3>
+          <mat-list-item>
+            <h4 mat-line style="margin: 0px;">Nombre</h4>
+            <p style="margin: 0px;">{{templateSel.name}}</p>
+          </mat-list-item>
+          <mat-list-item>
+              <h4 mat-line style="margin: 0px;">Lenguaje</h4>
+              <p style="margin: 0px;">{{templateSel.language}}</p>
+          </mat-list-item>
+          <mat-list-item>
+              <h4 mat-line style="margin: 0px;">Framework</h4>
+              <p style="margin: 0px;">{{templateSel.framework}}</p>
+          </mat-list-item>
+          <mat-list-item>
+              <h4 mat-line style="margin: 0px;">Template git</h4>
+              <p style="margin: 0px;"> {{templateSel.gitUrl}}</p>
+          </mat-list-item>
+      </mat-card>
+  </ng-container>
+  </div>
+  <div class="conten-app">
+    <form id="conten-app-form">
+      <addapp [template]="templateSel"></addapp>
+    </form>
+  </div>
+</div>
+
+
+<!--<router-outlet></router-outlet>-->
